@@ -3,8 +3,6 @@
 require "fileutils"
 require "open3"
 
-
-
 def get_main_path
     File.dirname(File.realdirpath(caller[0].match(/^(.*?):/)[1]))
 end
@@ -21,33 +19,38 @@ def exec_and_print (cmd)
     end
 end
 
-def build_glog (abi)
-    build_dir = "./build_#{abi}"
-    install_dir = "#{Dir.pwd}/glog/#{abi}"
+def build_glog (cmake, ninja, abi_list)
+    out = File.realpath(Dir.pwd)
     glog_src = get_canonicalized_root_src "glog"
-    Dir.chdir(glog_src)
-    if Dir.exist?(build_dir)
-        puts ">>> Cleaning previous build intermediates"
-        FileUtils.rm_r(build_dir)
-    end
-    puts ">>> Building glog for #{abi}"
-    exec_and_print(""" \
-        #{$cmake} -B#{build_dir} -G Ninja \
-        -DCMAKE_TOOLCHAIN_FILE=#{ENV["ANDROID_NDK_ROOT"]}/build/cmake/android.toolchain.cmake \
-        -DCMAKE_MAKE_PROGRAM=#{$ninja} \
-        -DANDROID_ABI=#{abi} \
-        -DANDROID_PLATFORM=#{ENV["ANDROID_PLATFORM"]} \
-        -DANDROID_STL=c++_shared \
-        -DCMAKE_INSTALL_PREFIX=#{install_dir} \
-        -DCMAKE_BUILD_TYPE=Release \
-        -DBUILD_SHARED_LIBS=OFF \
-        -DWITH_GFLAGS=OFF \
-        -DWITH_GTEST=OFF \
-        -DWITH_UNWIND=OFF \
-        -DBUILD_TESTING=OFF""")
-    exec_and_print("#{$cmake} --build #{build_dir} --target install")
+    for a in abi_list
+        Dir.chdir(glog_src)
+        build_dir = "build_#{a}"
+        install_dir = "#{out}/glog/#{a}"
+
+        if Dir.exist?(build_dir)
+            puts ">>> Cleaning previous build intermediates"
+            FileUtils.rm_r(build_dir)
+        end
+
+        puts ">>> Building glog for #{a}"
+        exec_and_print(""" \
+            #{cmake} -B#{build_dir} -G Ninja \
+            -DCMAKE_TOOLCHAIN_FILE=#{$cmake_toolchain} \
+            -DCMAKE_MAKE_PROGRAM=#{ninja} \
+            -DANDROID_ABI=#{a} \
+            -DANDROID_PLATFORM=#{ENV["ANDROID_PLATFORM"]} \
+            -DANDROID_STL=c++_shared \
+            -DCMAKE_INSTALL_PREFIX=#{install_dir} \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_SHARED_LIBS=OFF \
+            -DWITH_GFLAGS=OFF \
+            -DWITH_GTEST=OFF \
+            -DWITH_UNWIND=OF \
+            -DBUILD_TESTING=OFF""")
+        exec_and_print("#{cmake} --build #{build_dir} --target install")
     
-    FileUtils.rm_r("#{install_dir}/lib/pkgconfig")
+        FileUtils.rm_r("#{install_dir}/lib/pkgconfig")
+    end
 end
 
 if __FILE__ == $0
@@ -73,19 +76,19 @@ if __FILE__ == $0
     end
     
     android_sdk_cmake_bin = "#{ENV["ANDROID_SDK_ROOT"]}/cmake/#{ENV["ANDROID_SDK_CMAKE_VERSION"]}/bin"
-    $cmake = "#{android_sdk_cmake_bin}/cmake"
-    $ninja = "#{android_sdk_cmake_bin}/ninja"
+    cmake = "#{android_sdk_cmake_bin}/cmake"
+    ninja = "#{android_sdk_cmake_bin}/ninja"
     
-    if not File::exist?($cmake)
-        raise "Cannot find cmake: '#{$cmake}'"
+    if not File::exist?(cmake)
+        raise "Cannot find cmake: '#{cmake}'"
     end
+
+    $cmake_toolchain = "#{ENV["ANDROID_NDK_ROOT"]}/build/cmake/android.toolchain.cmake"
 
     $main_path = get_main_path
 
-    arch = ENV["ANDROID_ABI"].split(",")
+    abi_list = ENV["ANDROID_ABI"].split(",")
 
-    for a in arch
-        build_glog a
-    end
+    build_glog cmake, ninja, abi_list
 end
 
