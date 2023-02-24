@@ -128,6 +128,42 @@ def build_marisa_trie (cmake, ninja, abi_list)
     Dir.chdir(out)
 end
 
+def build_yaml_cpp (cmake, ninja, abi_list)
+    out = File.realpath(Dir.pwd)
+    Dir.chdir(out)
+    yaml_cpp_src = get_canonicalized_root_src "yaml-cpp"
+    for a in abi_list
+        Dir.chdir(yaml_cpp_src)
+        build_dir = "build_#{a}"
+        install_dir = "#{out}/yaml-cpp/#{a}"
+
+        if Dir.exist?(build_dir)
+            puts ">>> Cleaning previous build intermediates"
+            FileUtils.rm_r(build_dir)
+        end
+
+        puts ">>> Building yaml-cpp for #{a}"
+        exec_and_print(""" \
+            #{cmake} -B#{build_dir} -G Ninja \
+            -DCMAKE_TOOLCHAIN_FILE=#{$cmake_toolchain} \
+            -DCMAKE_MAKE_PROGRAM=#{ninja} \
+            -DANDROID_ABI=#{a} \
+            -DANDROID_PLATFORM=#{ENV["ANDROID_PLATFORM"]} \
+            -DANDROID_STL=c++_shared \
+            -DCMAKE_INSTALL_PREFIX=#{install_dir} \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_SHARED_LIBS=OFF \
+            -DYAML_CPP_BUILD_CONTRIB=OFF \
+	        -DYAML_CPP_BUILD_TESTS=OFF \
+	        -DYAML_CPP_BUILD_TOOLS=OFF""")
+        exec_and_print("#{cmake} --build #{build_dir} --target install")
+    
+        pkgconfig_path = "#{install_dir}/share/pkgconfig"
+        FileUtils.rm_r(pkgconfig_path) if Dir.exist?(pkgconfig_path)
+    end
+    Dir.chdir(out)
+end
+
 if __FILE__ == $0
 
     if not ENV.include?("ANDROID_SDK_ROOT")
@@ -167,5 +203,6 @@ if __FILE__ == $0
     build_glog cmake, ninja, abi_list
     build_leveldb cmake, ninja, abi_list
     build_marisa_trie cmake, ninja, abi_list
+    build_yaml_cpp cmake, ninja, abi_list
 end
 
