@@ -1,9 +1,6 @@
 [submodule "Boost-for-Android"]
 	path = Boost-for-Android
 	url = https://github.com/moritz-wundke/Boost-for-Android
-[submodule "libiconv"]
-	path = libiconv
-	url = https://git.savannah.gnu.org/git/libiconv
 [submodule "leveldb"]
 	path = leveldb
 	url = https://github.com/google/leveldb
