@@ -1,3 +1,7 @@
+cmake_minimum_required(VERSION 3.5)
+set (PACKAGE_NAME marisa-trie)
+project (${PACKAGE_NAME} CXX)
+
 include_directories(include)
 include_directories(lib)
 
@@ -17,3 +21,4 @@ set(
 add_library(marisa STATIC ${LIBMARISA_SOURCES})
 set_target_properties(marisa PROPERTIES POSITION_INDEPENDENT_CODE ON)
 source_group(marisa FILES ${LIBMARISA_SOURCES})
+install(TARGETS marisa LIBRARY DESTINATION lib)
