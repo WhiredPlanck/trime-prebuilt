@@ -21,6 +21,7 @@ end
 
 def build_glog (cmake, ninja, abi_list)
     out = File.realpath(Dir.pwd)
+    Dir.chdir(out)
     glog_src = get_canonicalized_root_src "glog"
     for a in abi_list
         Dir.chdir(glog_src)
@@ -49,8 +50,46 @@ def build_glog (cmake, ninja, abi_list)
             -DBUILD_TESTING=OFF""")
         exec_and_print("#{cmake} --build #{build_dir} --target install")
     
-        FileUtils.rm_r("#{install_dir}/lib/pkgconfig")
+        pkgconfig_path = "#{install_dir}/lib/pkgconfig"
+        FileUtils.rm_r(pkgconfig_path) if Dir.exist?(pkgconfig_path)
     end
+    Dir.chdir(out)
+end
+
+def build_leveldb (cmake, ninja, abi_list)
+    out = File.realpath(Dir.pwd)
+    Dir.chdir(out)
+    leveldb_src = get_canonicalized_root_src "leveldb"
+    for a in abi_list
+        Dir.chdir(leveldb_src)
+        build_dir = "build_#{a}"
+        install_dir = "#{out}/leveldb/#{a}"
+
+        if Dir.exist?(build_dir)
+            puts ">>> Cleaning previous build intermediates"
+            FileUtils.rm_r(build_dir)
+        end
+
+        puts ">>> Building leveldb for #{a}"
+        exec_and_print(""" \
+            #{cmake} -B#{build_dir} -G Ninja \
+            -DCMAKE_TOOLCHAIN_FILE=#{$cmake_toolchain} \
+            -DCMAKE_MAKE_PROGRAM=#{ninja} \
+            -DANDROID_ABI=#{a} \
+            -DANDROID_PLATFORM=#{ENV["ANDROID_PLATFORM"]} \
+            -DANDROID_STL=c++_shared \
+            -DCMAKE_INSTALL_PREFIX=#{install_dir} \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_SHARED_LIBS=OFF \
+            -DLEVELDB_BUILD_BENCHMARKS=OFF \
+	        -DLEVELDB_BUILD_TESTS=OFF
+            -DSnappy_DIR=#{out}/snappy/#{a}/lib/cmake/Snappy""")
+        exec_and_print("#{cmake} --build #{build_dir} --target install")
+    
+        pkgconfig_path = "#{install_dir}/lib/pkgconfig"
+        FileUtils.rm_r(pkgconfig_path) if Dir.exist?(pkgconfig_path)
+    end
+    Dir.chdir(out)
 end
 
 if __FILE__ == $0
@@ -90,5 +129,6 @@ if __FILE__ == $0
     abi_list = ENV["ANDROID_ABI"].split(",")
 
     build_glog cmake, ninja, abi_list
+    build_leveldb cmake, ninja, abi_list
 end
 
