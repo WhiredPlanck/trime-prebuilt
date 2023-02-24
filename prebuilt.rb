@@ -92,6 +92,42 @@ def build_leveldb (cmake, ninja, abi_list)
     Dir.chdir(out)
 end
 
+def build_marisa_trie (cmake, ninja, abi_list)
+    out = File.realpath(Dir.pwd)
+    Dir.chdir(out)
+    marisa_trie_src = get_canonicalized_root_src "marisa-trie"
+    # Symlink CMakeLists.txt
+    FileUtils.ln_sf("#{$main_path}/support/marisa-trie/CMakeLists.txt", "#{marisa_trie_src}/CMakeLists.txt")
+
+    for a in abi_list
+        Dir.chdir(marisa_trie_src)
+        build_dir = "build_#{a}"
+        install_dir = "#{out}/marisa-trie/#{a}"
+
+        if Dir.exist?(build_dir)
+            puts ">>> Cleaning previous build intermediates"
+            FileUtils.rm_r(build_dir)
+        end
+
+        puts ">>> Building marisa-trie for #{a}"
+        exec_and_print(""" \
+            #{cmake} -B#{build_dir} -G Ninja \
+            -DCMAKE_TOOLCHAIN_FILE=#{$cmake_toolchain} \
+            -DCMAKE_MAKE_PROGRAM=#{ninja} \
+            -DANDROID_ABI=#{a} \
+            -DANDROID_PLATFORM=#{ENV["ANDROID_PLATFORM"]} \
+            -DANDROID_STL=c++_shared \
+            -DCMAKE_INSTALL_PREFIX=#{install_dir} \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_SHARED_LIBS=OFF""")
+        exec_and_print("#{cmake} --build #{build_dir} --target install")
+    
+        pkgconfig_path = "#{install_dir}/lib/pkgconfig"
+        FileUtils.rm_r(pkgconfig_path) if Dir.exist?(pkgconfig_path)
+    end
+    Dir.chdir(out)
+end
+
 if __FILE__ == $0
 
     if not ENV.include?("ANDROID_SDK_ROOT")
@@ -130,5 +166,6 @@ if __FILE__ == $0
 
     build_glog cmake, ninja, abi_list
     build_leveldb cmake, ninja, abi_list
+    build_marisa_trie cmake, ninja, abi_list
 end
 
