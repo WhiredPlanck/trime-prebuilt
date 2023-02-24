@@ -11,13 +11,30 @@ def get_canonicalized_root_src (fp)
     File.realpath(fp, $main_path)
 end
 
-def exec_and_print (cmd)
+def exec_and_print (cmd, exception_msg = "")
     Open3.popen3(cmd) do |stdin, stdout, stderr, wait_thr|
         while line = stdout.gets
             puts line
         end
+        raise "#{exception_msg}: #{stderr.gets}" unless wait_thr.value.success?
     end
 end
+
+def download_file(base_url, filename, sha256)
+  sha256_now = `sha256sum #{filename}`[0..63] if File.exist?(filename)
+  if sha256 == sha256_now
+    puts "File already exists and the SHA256 matches."
+  else
+    exec_and_print("curl -LO #{File.join(base_url, filename)}", "Error downloading file: ")
+    sha256_now = `sha256sum #{filename}`[0..63]
+    if sha256 == sha256_now
+      puts "File downloaded and the SHA256 matches."
+    else
+      raise "SHA256 mismatched: expected #{sha256}, but got #{sha256_now}."
+    end
+  end
+end
+
 
 def build_glog (cmake, ninja, abi_list)
     out = File.realpath(Dir.pwd)
