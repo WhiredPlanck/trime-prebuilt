@@ -205,6 +205,10 @@ def build_boost (abi_list)
 
     boost_android_src = get_canonicalized_root_src "Boost-for-Android"
     install_dir = "#{out}/boost"
+    # The build script will test if the prefix dir exist,
+    # if true, then install (copy) the artifacts in the prefix dir,
+    # so let's make the dir first.
+    FileUtils.mkdir_p(install_dir)
     exec_and_print("""#{boost_android_src}/build-android.sh \
         --prefix=#{install_dir} \
         --boost=#{boost_version} \
@@ -217,10 +221,10 @@ def build_boost (abi_list)
     # since header files are the same regardless of abi
     # we take a random one
     first_abi = abi_list[0]
-    FileUtils.cp_r("boost/#{first_abi}/include", "boost/.")
+    FileUtils.cp_r("#{out}/boost/#{first_abi}/include", "#{out}/boost/.")
     for a in abi_list
         # symlink headers for each abi to reduce size
-        include_path = "boost/#{a}/include"
+        include_path = "#{out}/boost/#{a}/include"
         FileUtils.rm_r(include_path) if Dir.exist?(include_path)
         FileUtils.ln_sf("../include", include_path)
     end
