@@ -2,6 +2,7 @@
 
 require "fileutils"
 require "open3"
+require "yaml"
 
 def get_main_path
     File.dirname(File.realdirpath(caller[0].match(/^(.*?):/)[1]))
@@ -33,6 +34,15 @@ def download_file(base_url, filename, sha256)
       raise "SHA256 mismatched: expected #{sha256}, but got #{sha256_now}."
     end
   end
+end
+
+def get_config
+    begin
+        YAML.load_file("#{$main_path}/build.yaml")
+    rescue YAML::SyntaxError => ex
+        ex.file
+        ex.message
+    end
 end
 
 
@@ -181,6 +191,43 @@ def build_yaml_cpp (cmake, ninja, abi_list)
     Dir.chdir(out)
 end
 
+def build_boost (abi_list)
+    out = File.realpath(Dir.pwd)
+    Dir.chdir(out)
+
+    # Download the source
+    boost_config = get_config["boost"]
+    boost_base_url = boost_config["base_url"]
+    boost_version = boost_config["version"]
+    boost_sha256 = boost_config["sha256"]
+    boost_filename = "boost_#{boost_version.gsub(".", "_")}"
+    boost_tar = "#{boost_filename}.tar.bz2"
+    download_file boost_base_url.gsub("${boost_version}", boost_version), boost_tar, boost_sha256
+
+    boost_android_src = get_canonicalized_root_src "Boost-for-Android"
+    install_dir = "#{out}/boost"
+    exec_and_print("""#{boost_android_src}/build-android.sh \
+        --prefix=#{install_dir} \
+        --boost=#{boost_version} \
+        --with-libraries=filesystem,regex,system \
+        --arch=#{abi_list.join(",")} \
+        --target-version=#{ENV["ANDROID_PLATFORM"]} \
+        --layout= \
+        #{ENV["ANDROID_NDK_ROOT"]}""")
+    
+    # since header files are the same regardless of abi
+    # we take a random one
+    first_abi = abi_list[0]
+    FileUtils.cp_r("boost/#{first_abi}/include", "boost/.")
+    for a in abi_list
+        # symlink headers for each abi to reduce size
+        include_path = "boost/#{a}/include"
+        FileUtils.rm_r(include_path) if Dir.exist?(include_path)
+        FileUtils.ln_sf("../include", include_path)
+    end
+    Dir.chdir(out)
+end
+
 if __FILE__ == $0
 
     if not ENV.include?("ANDROID_SDK_ROOT")
@@ -221,5 +268,6 @@ if __FILE__ == $0
     build_leveldb cmake, ninja, abi_list
     build_marisa_trie cmake, ninja, abi_list
     build_yaml_cpp cmake, ninja, abi_list
+    build_boost abi_list
 end
 
