@@ -118,6 +118,41 @@ def build_leveldb (cmake, ninja, abi_list)
     Dir.chdir(out)
 end
 
+def build_lua (cmake, ninja, abi_list)
+    out = File.realpath(Dir.pwd)
+    Dir.chdir(out)
+    lua_src = get_canonicalized_root_src "Lua"
+    for a in abi_list
+        Dir.chdir(lua_src)
+        build_dir = "build_#{a}"
+        install_dir = "#{out}/Lua/#{a}"
+
+        if Dir.exist?(build_dir)
+            puts ">>> Cleaning previous build intermediates"
+            FileUtils.rm_r(build_dir)
+        end
+
+        puts ">>> Building Lua for #{a}"
+        exec_and_print(""" \
+            #{cmake} -B#{build_dir} -G Ninja \
+            -DCMAKE_TOOLCHAIN_FILE=#{$cmake_toolchain} \
+            -DCMAKE_MAKE_PROGRAM=#{ninja} \
+            -DANDROID_ABI=#{a} \
+            -DANDROID_PLATFORM=#{ENV["ANDROID_PLATFORM"]} \
+            -DANDROID_STL=c++_shared \
+            -DCMAKE_INSTALL_PREFIX=#{install_dir} \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_SHARED_LIBS=OFF \
+            -DLUA_BUILD_BINARY=OFF \
+            -DLUA_BUILD_COMPILER=OFF""")
+        exec_and_print("#{cmake} --build #{build_dir} --target install")
+    
+        pkgconfig_path = "#{install_dir}/lib/pkgconfig"
+        FileUtils.rm_r(pkgconfig_path) if Dir.exist?(pkgconfig_path)
+    end
+    Dir.chdir(out)
+end
+
 def build_marisa_trie (cmake, ninja, abi_list)
     out = File.realpath(Dir.pwd)
     Dir.chdir(out)
@@ -269,6 +304,7 @@ if __FILE__ == $0
 
     build_glog cmake, ninja, abi_list
     build_leveldb cmake, ninja, abi_list
+    build_lua cmake, ninja, abi_list
     build_marisa_trie cmake, ninja, abi_list
     build_yaml_cpp cmake, ninja, abi_list
     build_boost abi_list
