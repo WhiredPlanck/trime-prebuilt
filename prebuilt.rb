@@ -251,6 +251,7 @@ def build_boost (abi_list)
         --arch=#{abi_list.join(",")} \
         --target-version=#{ENV["ANDROID_PLATFORM"]} \
         --layout= \
+        --with-iconv \
         #{ENV["ANDROID_NDK_ROOT"]}""")
     
     # since header files are the same regardless of abi
