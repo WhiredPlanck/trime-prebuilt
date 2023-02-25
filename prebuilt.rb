@@ -109,8 +109,7 @@ def build_leveldb (cmake, ninja, abi_list)
             -DCMAKE_BUILD_TYPE=Release \
             -DBUILD_SHARED_LIBS=OFF \
             -DLEVELDB_BUILD_BENCHMARKS=OFF \
-	        -DLEVELDB_BUILD_TESTS=OFF
-            -DSnappy_DIR=#{out}/snappy/#{a}/lib/cmake/Snappy""")
+	        -DLEVELDB_BUILD_TESTS=OFF""")
         exec_and_print("#{cmake} --build #{build_dir} --target install")
     
         pkgconfig_path = "#{install_dir}/lib/pkgconfig"
