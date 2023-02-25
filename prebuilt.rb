@@ -244,6 +244,11 @@ def build_boost (abi_list)
     # if true, then install (copy) the artifacts in the prefix dir,
     # so let's make the dir first.
     FileUtils.mkdir_p(install_dir)
+
+    # We only need libiconv, so set the environment variables to
+    # avoid extra building.
+    ENV["SKIP_HARFBUZZ"] = "1"
+    ENV["SKIP_ICUUC"] = "1"
     exec_and_print("""#{boost_android_src}/build-android.sh \
         --prefix=#{install_dir} \
         --boost=#{boost_version} \
