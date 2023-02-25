@@ -16,6 +16,7 @@ The third-party libraries, prebuilder and prebuilt artifacts of Trime.
 - boost: [moritz-wundke/Boost-for-Android](https://github.com/moritz-wundke/Boost-for-Android)
 - glog: [google/glog](https://github.com/google/glog)
 - leveldb: [google/leveldb](https://github.com/google/leveldb)
+- lua: [walterschell/Lua](https://github.com/walterschell/Lua)
 - libiconv: [GNU/libiconv](https://savannah.gnu.org/projects/libiconv)
 - marisa-trie: [s-yata/marisa-trie](https://github.com/s-yata/marisa-trie)
 - yaml-cpp: [jbeder/yaml-cpp](https://github.com/jbeder/yaml-cpp)
