@@ -1,0 +1,62 @@
+name: Release CI
+
+on:
+  push:
+    tags:
+      - '*.*.*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: archlinux
+    env:
+      abi: armeabi-v7a,arm64-v8a,x86,x86_64
+      ndk_version: 25.0.8775105
+      cmake_version: 3.22.1
+      platform: 21
+
+    steps:
+      - name: Install build dependencies
+        run: |
+          pacman -Syu --noconfirm
+          pacman -S --needed --noconfirm base-devel git unzip jdk11-openjdk ruby
+
+      - name: Fetch source code
+        uses: actions/checkout@v3
+        with:
+          submodules: true
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v2
+
+      - name: Install NDK
+        run: sdkmanager --install "ndk;${{ env.ndk_version }}"
+
+      - name: Install cmake
+        run: sdkmanager --install "cmake;${{ env.cmake_version }}"
+
+      - name: Build
+        run: |
+          export ANDROID_NDK_ROOT=${ANDROID_SDK_ROOT}/ndk/${{ env.ndk_version }}
+          export ANDROID_SDK_CMAKE_VERSION=${{ env.cmake_version }}
+          export ANDROID_PLATFORM=${{ env.platform }}
+          export ANDROID_ABI=${{ env.abi }}
+          mkdir build
+          cd build
+          ruby ../prebuilt.rb
+
+      - name: Package
+        run: |
+          mkdir -p build/prebuilt
+          cp -a build/{'glog','leveldb','marisa-trie','yaml-cpp','lua','boost'} \
+                build/prebuilt/
+          cd build
+          tar --zstd -cf prebuilt.tar.zst prebuilt/
+
+      - name: Release
+        uses: ncipollo/release-action@v1
+        with:
+          artifacts: "build/prebuilt.tar.zst"
+          body: |
+            Auto Release
+          token: ${{ secrets.GITHUB_TOKEN }}
