@@ -245,10 +245,6 @@ def build_boost (abi_list)
     # so let's make the dir first.
     FileUtils.mkdir_p(install_dir)
 
-    # We only need libiconv, so set the environment variables to
-    # avoid extra building.
-    ENV["SKIP_HARFBUZZ"] = "1"
-    ENV["SKIP_ICUUC"] = "1"
     exec_and_print("""#{boost_android_src}/build-android.sh \
         --prefix=#{install_dir} \
         --boost=#{boost_version} \
@@ -256,7 +252,6 @@ def build_boost (abi_list)
         --arch=#{abi_list.join(",")} \
         --target-version=#{ENV["ANDROID_PLATFORM"]} \
         --layout= \
-        --with-iconv \
         #{ENV["ANDROID_NDK_ROOT"]}""")
     
     # since header files are the same regardless of abi
