@@ -125,7 +125,7 @@ def build_lua (cmake, ninja, abi_list)
     for a in abi_list
         Dir.chdir(lua_src)
         build_dir = "build_#{a}"
-        install_dir = "#{out}/Lua/#{a}"
+        install_dir = "#{out}/lua/#{a}"
 
         if Dir.exist?(build_dir)
             puts ">>> Cleaning previous build intermediates"
