@@ -248,10 +248,10 @@ def build_boost (abi_list)
     exec_and_print("""#{boost_android_src}/build-android.sh \
         --prefix=#{install_dir} \
         --boost=#{boost_version} \
-        --with-libraries=filesystem,regex,system \
+        --with-libraries=filesystem,regex,system,locale \
         --arch=#{abi_list.join(",")} \
         --target-version=#{ENV["ANDROID_PLATFORM"]} \
-        --layout= \
+        --layout=system \
         #{ENV["ANDROID_NDK_ROOT"]}""")
     
     # since header files are the same regardless of abi
