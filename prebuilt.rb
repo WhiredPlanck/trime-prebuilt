@@ -289,6 +289,16 @@ def build_boost ()
     # so let's make the dir first.
     FileUtils.mkdir_p(install_dir)
 
+    # Download the libiconv build scripts in advance
+    # to modify APILEVEL
+    libiconv_android_src = "libiconv-libicu-android"
+    cmd("git clone --depth=1 https://github.com/pelya/#{libiconv_android_src}.git") \
+        if not Dir.exist?("#{out}/#{libiconv_android_src}")
+    for a in abi_list
+        cmd("""sed -e \'s/^APILEVEL=[0-9][0-9]$/APILEVEL=#{ENV["ANDROID_PLATFORM"]}/g\' \
+            -i #{out}/#{libiconv_android_src}/setEnvironment-#{a}.sh""")
+    end
+
     cmd("""#{boost_android_src}/build-android.sh \
         --prefix=#{install_dir} \
         --boost=#{boost_version} \
