@@ -3,6 +3,7 @@
 require "fileutils"
 require "open3"
 require "yaml"
+require "optparse"
 
 def get_main_path
     File.dirname(File.realdirpath(caller[0].match(/^(.*?):/)[1]))
@@ -12,11 +13,31 @@ def get_canonicalized_root_src (fp)
     File.realpath(fp, $main_path)
 end
 
-def exec_and_print (cmd, exception_msg = "")
+def get_sdk_cmake
+    android_sdk_cmake_bin = "#{ENV["ANDROID_SDK_ROOT"]}/cmake/#{ENV["ANDROID_SDK_CMAKE_VERSION"]}/bin"
+    "#{android_sdk_cmake_bin}/cmake"
+end
+
+def get_sdk_ninja
+    android_sdk_cmake_bin = "#{ENV["ANDROID_SDK_ROOT"]}/cmake/#{ENV["ANDROID_SDK_CMAKE_VERSION"]}/bin"
+    "#{android_sdk_cmake_bin}/ninja"
+end
+
+def get_abi_list
+    ENV["ANDROID_ABI"].split(",")
+end
+
+def get_cmake_toolchain
+    "#{ENV["ANDROID_NDK_ROOT"]}/build/cmake/android.toolchain.cmake"
+end
+
+def with_android_env
+    return get_sdk_cmake, get_sdk_ninja, get_abi_list
+end
+
+def cmd (cmd, exception_msg = "")
     Open3.popen3(cmd) do |stdin, stdout, stderr, wait_thr|
-        while line = stdout.gets
-            puts line
-        end
+        stdout.each { |l| puts l }
         raise "#{exception_msg}: #{stderr.gets}" unless wait_thr.value.success?
     end
 end
@@ -26,7 +47,7 @@ def download_file(base_url, filename, sha256)
   if sha256 == sha256_now
     puts "File already exists and the SHA256 matches."
   else
-    exec_and_print("curl -LO #{File.join(base_url, filename)}", "Error downloading file: ")
+    cmd("curl -LO #{File.join(base_url, filename)}", "Error downloading file: ")
     sha256_now = `sha256sum #{filename}`[0..63]
     if sha256 == sha256_now
       puts "File downloaded and the SHA256 matches."
@@ -34,6 +55,12 @@ def download_file(base_url, filename, sha256)
       raise "SHA256 mismatched: expected #{sha256}, but got #{sha256_now}."
     end
   end
+end
+
+def check_env (variable, exception_msg)
+    if not ENV.include?(variable)
+        raise ArgumentError, exception_msg
+    end
 end
 
 def get_config
@@ -46,7 +73,10 @@ def get_config
 end
 
 
-def build_glog (cmake, ninja, abi_list)
+def build_glog ()
+    cmake, ninja, abi_list = with_android_env
+    toolchain = get_cmake_toolchain
+
     out = File.realpath(Dir.pwd)
     Dir.chdir(out)
     glog_src = get_canonicalized_root_src "glog"
@@ -61,9 +91,9 @@ def build_glog (cmake, ninja, abi_list)
         end
 
         puts ">>> Building glog for #{a}"
-        exec_and_print(""" \
+        cmd(""" \
             #{cmake} -B#{build_dir} -G Ninja \
-            -DCMAKE_TOOLCHAIN_FILE=#{$cmake_toolchain} \
+            -DCMAKE_TOOLCHAIN_FILE=#{toolchain} \
             -DCMAKE_MAKE_PROGRAM=#{ninja} \
             -DANDROID_ABI=#{a} \
             -DANDROID_PLATFORM=#{ENV["ANDROID_PLATFORM"]} \
@@ -75,7 +105,7 @@ def build_glog (cmake, ninja, abi_list)
             -DWITH_GTEST=OFF \
             -DWITH_UNWIND=OF \
             -DBUILD_TESTING=OFF""")
-        exec_and_print("#{cmake} --build #{build_dir} --target install")
+        cmd("#{cmake} --build #{build_dir} --target install")
     
         pkgconfig_path = "#{install_dir}/lib/pkgconfig"
         FileUtils.rm_r(pkgconfig_path) if Dir.exist?(pkgconfig_path)
@@ -83,7 +113,10 @@ def build_glog (cmake, ninja, abi_list)
     Dir.chdir(out)
 end
 
-def build_leveldb (cmake, ninja, abi_list)
+def build_leveldb ()
+    cmake, ninja, abi_list = with_android_env
+    toolchain = get_cmake_toolchain
+
     out = File.realpath(Dir.pwd)
     Dir.chdir(out)
     leveldb_src = get_canonicalized_root_src "leveldb"
@@ -98,9 +131,9 @@ def build_leveldb (cmake, ninja, abi_list)
         end
 
         puts ">>> Building leveldb for #{a}"
-        exec_and_print(""" \
+        cmd(""" \
             #{cmake} -B#{build_dir} -G Ninja \
-            -DCMAKE_TOOLCHAIN_FILE=#{$cmake_toolchain} \
+            -DCMAKE_TOOLCHAIN_FILE=#{toolchain} \
             -DCMAKE_MAKE_PROGRAM=#{ninja} \
             -DANDROID_ABI=#{a} \
             -DANDROID_PLATFORM=#{ENV["ANDROID_PLATFORM"]} \
@@ -110,7 +143,7 @@ def build_leveldb (cmake, ninja, abi_list)
             -DBUILD_SHARED_LIBS=OFF \
             -DLEVELDB_BUILD_BENCHMARKS=OFF \
 	        -DLEVELDB_BUILD_TESTS=OFF""")
-        exec_and_print("#{cmake} --build #{build_dir} --target install")
+        cmd("#{cmake} --build #{build_dir} --target install")
     
         pkgconfig_path = "#{install_dir}/lib/pkgconfig"
         FileUtils.rm_r(pkgconfig_path) if Dir.exist?(pkgconfig_path)
@@ -118,7 +151,10 @@ def build_leveldb (cmake, ninja, abi_list)
     Dir.chdir(out)
 end
 
-def build_lua (cmake, ninja, abi_list)
+def build_lua ()
+    cmake, ninja, abi_list = with_android_env
+    toolchain = get_cmake_toolchain
+
     out = File.realpath(Dir.pwd)
     Dir.chdir(out)
     lua_src = get_canonicalized_root_src "Lua"
@@ -133,9 +169,9 @@ def build_lua (cmake, ninja, abi_list)
         end
 
         puts ">>> Building Lua for #{a}"
-        exec_and_print(""" \
+        cmd(""" \
             #{cmake} -B#{build_dir} -G Ninja \
-            -DCMAKE_TOOLCHAIN_FILE=#{$cmake_toolchain} \
+            -DCMAKE_TOOLCHAIN_FILE=#{toolchain} \
             -DCMAKE_MAKE_PROGRAM=#{ninja} \
             -DANDROID_ABI=#{a} \
             -DANDROID_PLATFORM=#{ENV["ANDROID_PLATFORM"]} \
@@ -145,7 +181,7 @@ def build_lua (cmake, ninja, abi_list)
             -DBUILD_SHARED_LIBS=OFF \
             -DLUA_BUILD_BINARY=OFF \
             -DLUA_BUILD_COMPILER=OFF""")
-        exec_and_print("#{cmake} --build #{build_dir} --target install")
+        cmd("#{cmake} --build #{build_dir} --target install")
     
         pkgconfig_path = "#{install_dir}/lib/pkgconfig"
         FileUtils.rm_r(pkgconfig_path) if Dir.exist?(pkgconfig_path)
@@ -153,7 +189,10 @@ def build_lua (cmake, ninja, abi_list)
     Dir.chdir(out)
 end
 
-def build_marisa_trie (cmake, ninja, abi_list)
+def build_marisa_trie ()
+    cmake, ninja, abi_list = with_android_env
+    toolchain = get_cmake_toolchain
+
     out = File.realpath(Dir.pwd)
     Dir.chdir(out)
     marisa_trie_src = get_canonicalized_root_src "marisa-trie"
@@ -171,9 +210,9 @@ def build_marisa_trie (cmake, ninja, abi_list)
         end
 
         puts ">>> Building marisa-trie for #{a}"
-        exec_and_print(""" \
+        cmd(""" \
             #{cmake} -B#{build_dir} -G Ninja \
-            -DCMAKE_TOOLCHAIN_FILE=#{$cmake_toolchain} \
+            -DCMAKE_TOOLCHAIN_FILE=#{toolchain} \
             -DCMAKE_MAKE_PROGRAM=#{ninja} \
             -DANDROID_ABI=#{a} \
             -DANDROID_PLATFORM=#{ENV["ANDROID_PLATFORM"]} \
@@ -181,7 +220,7 @@ def build_marisa_trie (cmake, ninja, abi_list)
             -DCMAKE_INSTALL_PREFIX=#{install_dir} \
             -DCMAKE_BUILD_TYPE=Release \
             -DBUILD_SHARED_LIBS=OFF""")
-        exec_and_print("#{cmake} --build #{build_dir} --target install")
+        cmd("#{cmake} --build #{build_dir} --target install")
     
         pkgconfig_path = "#{install_dir}/lib/pkgconfig"
         FileUtils.rm_r(pkgconfig_path) if Dir.exist?(pkgconfig_path)
@@ -189,7 +228,10 @@ def build_marisa_trie (cmake, ninja, abi_list)
     Dir.chdir(out)
 end
 
-def build_yaml_cpp (cmake, ninja, abi_list)
+def build_yaml_cpp ()
+    cmake, ninja, abi_list = with_android_env
+    toolchain = get_cmake_toolchain
+
     out = File.realpath(Dir.pwd)
     Dir.chdir(out)
     yaml_cpp_src = get_canonicalized_root_src "yaml-cpp"
@@ -204,7 +246,7 @@ def build_yaml_cpp (cmake, ninja, abi_list)
         end
 
         puts ">>> Building yaml-cpp for #{a}"
-        exec_and_print(""" \
+        cmd(""" \
             #{cmake} -B#{build_dir} -G Ninja \
             -DCMAKE_TOOLCHAIN_FILE=#{$cmake_toolchain} \
             -DCMAKE_MAKE_PROGRAM=#{ninja} \
@@ -217,7 +259,7 @@ def build_yaml_cpp (cmake, ninja, abi_list)
             -DYAML_CPP_BUILD_CONTRIB=OFF \
 	        -DYAML_CPP_BUILD_TESTS=OFF \
 	        -DYAML_CPP_BUILD_TOOLS=OFF""")
-        exec_and_print("#{cmake} --build #{build_dir} --target install")
+        cmd("#{cmake} --build #{build_dir} --target install")
     
         pkgconfig_path = "#{install_dir}/share/pkgconfig"
         FileUtils.rm_r(pkgconfig_path) if Dir.exist?(pkgconfig_path)
@@ -225,7 +267,9 @@ def build_yaml_cpp (cmake, ninja, abi_list)
     Dir.chdir(out)
 end
 
-def build_boost (abi_list)
+def build_boost ()
+    _, _, abi_list = with_android_env
+
     out = File.realpath(Dir.pwd)
     Dir.chdir(out)
 
@@ -245,7 +289,7 @@ def build_boost (abi_list)
     # so let's make the dir first.
     FileUtils.mkdir_p(install_dir)
 
-    exec_and_print("""#{boost_android_src}/build-android.sh \
+    cmd("""#{boost_android_src}/build-android.sh \
         --prefix=#{install_dir} \
         --boost=#{boost_version} \
         --with-libraries=filesystem,regex,system,locale \
@@ -269,45 +313,49 @@ end
 
 if __FILE__ == $0
 
-    if not ENV.include?("ANDROID_SDK_ROOT")
-        raise ArgumentError, "ANDROID_SDK_ROOT should be set to Android SDK path."
-    end
-    
-    if not ENV.include?("ANDROID_NDK_ROOT")
-        raise ArgumentError, "ANDROID_NDK_ROOT should be set to Android NDK path."
-    end
-    
-    if not ENV.include?("ANDROID_SDK_CMAKE_VERSION")
-        raise ArgumentError, "ANDROID_SDK_CMAKE_VERSION should be set to desired cmake version in $ANDROID_SDK_ROOT/cmake. eg. 3.18.1"
-    end
-    
-    if not ENV.include?("ANDROID_PLATFORM")
-        raise ArgumentError, "ANDROID_PLATFORM should be set to minimum API level supported by the library. eg. 21"
-    end
-    
-    if not ENV.include?("ANDROID_ABI")
-        raise ArgumentError, "ANDROID_ABI not set; can be a ',' separated list. eg. armeabi-v7a,arm64-v8a"
-    end
-    
-    android_sdk_cmake_bin = "#{ENV["ANDROID_SDK_ROOT"]}/cmake/#{ENV["ANDROID_SDK_CMAKE_VERSION"]}/bin"
-    cmake = "#{android_sdk_cmake_bin}/cmake"
-    ninja = "#{android_sdk_cmake_bin}/ninja"
-    
-    if not File::exist?(cmake)
-        raise "Cannot find cmake: '#{cmake}'"
-    end
-
-    $cmake_toolchain = "#{ENV["ANDROID_NDK_ROOT"]}/build/cmake/android.toolchain.cmake"
+    check_env "ANDROID_SDK_ROOT", "ANDROID_SDK_ROOT should be set to Android SDK path."
+    check_env "ANDROID_NDK_ROOT", "ANDROID_NDK_ROOT should be set to Android NDK path."
+    check_env "ANDROID_SDK_CMAKE_VERSION", \
+        "ANDROID_SDK_CMAKE_VERSION should be set to desired cmake version in $ANDROID_SDK_ROOT/cmake. eg. 3.18.1"
+    check_env "ANDROID_PLATFORM", \
+        "ANDROID_PLATFORM should be set to minimum API level supported by the library. eg. 21"
+    check_env "ANDROID_ABI", "ANDROID_ABI not set; can be a ',' separated list. eg. armeabi-v7a,arm64-v8a"
 
     $main_path = get_main_path
 
-    abi_list = ENV["ANDROID_ABI"].split(",")
+    OptionParser.new do |parser|
+        parser.banner = "Usage: prebuilt.rb [options]"
 
-    build_glog cmake, ninja, abi_list
-    build_leveldb cmake, ninja, abi_list
-    build_lua cmake, ninja, abi_list
-    build_marisa_trie cmake, ninja, abi_list
-    build_yaml_cpp cmake, ninja, abi_list
-    build_boost abi_list
+        parser.on("-b", "--build COMPONENT", "Build specified component.") do |com|
+            case com
+            when "glog"
+                build_glog
+            when "leveldb"
+                build_leveldb
+            when "lua"
+                build_lua
+            when "marisa-trie"
+                build_marisa_trie
+            when "yaml-cpp"
+                build_yaml_cpp
+            when "boost"
+                build_boost
+            when "everything"
+                build_glog
+                build_leveldb
+                build_lua cmake
+                build_marisa_trie
+                build_yaml_cpp
+                build_boost
+            else
+                puts ">>>! Not supported component yet."
+            end
+        end
+
+        parser.on("-h", "--help", "Prints this help.") do
+            puts parser
+            exit
+        end
+    end.parse!
 end
 
