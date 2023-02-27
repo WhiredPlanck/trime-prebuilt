@@ -339,33 +339,25 @@ if __FILE__ == $0
 
     $main_path = get_main_path
 
+    action_hash = {
+        "glog" => :build_glog,
+        "leveldb" => :build_leveldb,
+        "lua" => :build_lua,
+        "marisa-trie" => :build_marisa_trie,
+        "yaml-cpp" => :build_yaml_cpp,
+        "boost" => :build_boost
+    }
+
     OptionParser.new do |parser|
         parser.banner = "Usage: prebuilt.rb [options]"
 
         parser.on("-b", "--build COMPONENT", "Build specified component.") do |com|
-            case com
-            when "glog"
-                build_glog
-            when "leveldb"
-                build_leveldb
-            when "lua"
-                build_lua
-            when "marisa-trie"
-                build_marisa_trie
-            when "yaml-cpp"
-                build_yaml_cpp
-            when "boost"
-                build_boost
-            when "everything"
-                build_glog
-                build_leveldb
-                build_lua cmake
-                build_marisa_trie
-                build_yaml_cpp
-                build_boost
-            else
-                puts ">>>! Not supported component yet."
+            if action_hash.include?(com)
+                send(action_hash[com])
+            elsif com == "everything"
+                action_hash.each { |_, act| send(act) }
             end
+            puts "Unknown component: #{com}"
         end
 
         parser.on("-h", "--help", "Prints this help.") do

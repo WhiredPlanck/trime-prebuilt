@@ -46,4 +46,4 @@ jobs:
           export ANDROID_ABI=${{ env.abi }}
           mkdir build
           cd build
-          ruby ../prebuilt.rb
+          ruby ../prebuilt.rb -b everything
