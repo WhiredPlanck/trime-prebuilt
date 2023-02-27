@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 
 require "fileutils"
-require "open3"
+require "pty"
 require "yaml"
 require "optparse"
 
@@ -36,10 +36,16 @@ def with_android_env
 end
 
 def cmd (cmd, exception_msg = "")
-    Open3.popen3(cmd) do |stdin, stdout, stderr, wait_thr|
-        stdout.each { |l| puts l }
-        raise "#{exception_msg}: #{stderr.gets}" unless wait_thr.value.success?
-    end
+    begin
+        PTY.spawn(cmd) do |stdout, stdin, pid|
+          begin
+            stdout.each { |line| print line }
+          rescue Errno::EIO
+          end
+        end
+      rescue PTY::ChildExited
+        puts "The child process exited!"
+      end
 end
 
 def download_file(base_url, filename, sha256)
