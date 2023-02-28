@@ -356,12 +356,20 @@ if __FILE__ == $0
                 send(action_hash[com])
             elsif com == "everything"
                 action_hash.each { |_, act| send(act) }
+            else
+                puts "Unknown component: '#{com}'."
+                puts "Run `prebult.rb -l` to see available components."
             end
-            puts "Unknown component: #{com}"
         end
 
         parser.on("-h", "--help", "Prints this help.") do
             puts parser
+            exit
+        end
+
+        parser.on("-l", "--list", "List all available components.") do
+            puts "Available components: #{action_hash.keys.join(", ")}"
+            puts "Run `prebuilt.rb -b everything` to build all components."
             exit
         end
     end.parse!
