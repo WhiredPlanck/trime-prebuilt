@@ -361,14 +361,14 @@ if __FILE__ == $0
             end
         end
 
-        parser.on("-h", "--help", "Prints this help.") do
-            puts parser
-            exit
-        end
-
         parser.on("-l", "--list", "List all available components.") do
             puts "Available components: #{action_hash.keys.join(", ")}"
             puts "Run `prebuilt.rb -b everything` to build all components."
+            exit
+        end
+
+        parser.on("-h", "--help", "Prints this help.") do
+            puts parser
             exit
         end
     end.parse!
