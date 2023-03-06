@@ -328,15 +328,6 @@ def build_boost ()
 end
 
 if __FILE__ == $0
-
-    check_env "ANDROID_SDK_ROOT", "ANDROID_SDK_ROOT should be set to Android SDK path."
-    check_env "ANDROID_NDK_ROOT", "ANDROID_NDK_ROOT should be set to Android NDK path."
-    check_env "ANDROID_SDK_CMAKE_VERSION", \
-        "ANDROID_SDK_CMAKE_VERSION should be set to desired cmake version in $ANDROID_SDK_ROOT/cmake. eg. 3.18.1"
-    check_env "ANDROID_PLATFORM", \
-        "ANDROID_PLATFORM should be set to minimum API level supported by the library. eg. 21"
-    check_env "ANDROID_ABI", "ANDROID_ABI not set; can be a ',' separated list. eg. armeabi-v7a,arm64-v8a"
-
     $main_path = get_main_path
 
     action_hash = {
@@ -352,6 +343,14 @@ if __FILE__ == $0
         parser.banner = "Usage: prebuilt.rb [options]"
 
         parser.on("-b", "--build COMPONENT", "Build specified component.") do |com|
+            check_env "ANDROID_SDK_ROOT", "ANDROID_SDK_ROOT should be set to Android SDK path."
+            check_env "ANDROID_NDK_ROOT", "ANDROID_NDK_ROOT should be set to Android NDK path."
+            check_env "ANDROID_SDK_CMAKE_VERSION", \
+                "ANDROID_SDK_CMAKE_VERSION should be set to desired cmake version in $ANDROID_SDK_ROOT/cmake. eg. 3.18.1"
+            check_env "ANDROID_PLATFORM", \
+                "ANDROID_PLATFORM should be set to minimum API level supported by the library. eg. 21"
+            check_env "ANDROID_ABI", "ANDROID_ABI not set; can be a ',' separated list. eg. armeabi-v7a,arm64-v8a"
+
             if action_hash.include?(com)
                 send(action_hash[com])
             elsif com == "everything"
