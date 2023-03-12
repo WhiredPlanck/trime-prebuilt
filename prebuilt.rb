@@ -305,6 +305,8 @@ def build_boost ()
             -i #{out}/#{libiconv_android_src}/setEnvironment-#{a}.sh""")
     end
 
+    ENV["SKIP_HARFBUZZ"] = "1"
+
     cmd("""#{boost_android_src}/build-android.sh \
         --prefix=#{install_dir} \
         --boost=#{boost_version} \
@@ -324,6 +326,25 @@ def build_boost ()
         FileUtils.rm_r(include_path) if Dir.exist?(include_path)
         FileUtils.ln_sf("../include", include_path)
     end
+
+    # install libiconv and libicu
+    libiconv_install_dir = "#{out}/libiconv-libicu"
+    FileUtils.mkdir_p("#{out}/libiconv-libicu")
+    for a in abi_list
+        FileUtils.cp_r("#{out}/#{libiconv_android_src}/#{a}", "#{libiconv_install_dir}/.")
+
+        arch_dir = "#{libiconv_install_dir}/#{a}"
+        for f in ["sbin", "bin", "icu", "libiconv-1.15", "share", "lib"]
+            FileUtils.rm_r("#{arch_dir}/#{f}")
+        end
+
+        FileUtils.mkdir_p("#{arch_dir}/lib")
+        libs = Dir.glob("#{arch_dir}/*.a") + Dir.glob("#{arch_dir}/*.so")
+        libs.each do |lib|
+            FileUtils.mv(lib, "#{arch_dir}/lib")
+        end
+    end
+
     Dir.chdir(out)
 end
 
