@@ -254,7 +254,7 @@ def build_yaml_cpp ()
         puts ">>> Building yaml-cpp for #{a}"
         cmd(""" \
             #{cmake} -B#{build_dir} -G Ninja \
-            -DCMAKE_TOOLCHAIN_FILE=#{$cmake_toolchain} \
+            -DCMAKE_TOOLCHAIN_FILE=#{toolchain} \
             -DCMAKE_MAKE_PROGRAM=#{ninja} \
             -DANDROID_ABI=#{a} \
             -DANDROID_PLATFORM=#{ENV["ANDROID_PLATFORM"]} \
