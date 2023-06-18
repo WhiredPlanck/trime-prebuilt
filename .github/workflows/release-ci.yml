@@ -48,7 +48,7 @@ jobs:
       - name: Package
         run: |
           mkdir -p build/prebuilt
-          cp -a build/{'glog','leveldb','marisa-trie','yaml-cpp','lua','libiconv-libicu','boost'} \
+          cp -a build/{'glog','leveldb','marisa-trie','yaml-cpp','lua','libiconv-libicu','boost','snappy'} \
                 build/prebuilt/
           cd build
           tar --zstd -cf prebuilt.tar.zst prebuilt/

@@ -16,3 +16,6 @@
 [submodule "Lua"]
 	path = Lua
 	url = https://github.com/walterschell/Lua
+[submodule "snappy"]
+	path = snappy
+	url = https://github.com/google/snappy

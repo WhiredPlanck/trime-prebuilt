@@ -119,6 +119,44 @@ def build_glog ()
     Dir.chdir(out)
 end
 
+def build_snappy ()
+    cmake, ninja, abi_list = with_android_env
+    toolchain = get_cmake_toolchain
+
+    out = File.realpath(Dir.pwd)
+    Dir.chdir(out)
+    leveldb_src = get_canonicalized_root_src "snappy"
+    for a in abi_list
+        Dir.chdir(leveldb_src)
+        build_dir = "build_#{a}"
+        install_dir = "#{out}/snappy/#{a}"
+
+        if Dir.exist?(build_dir)
+            puts ">>> Cleaning previous build intermediates"
+            FileUtils.rm_r(build_dir)
+        end
+
+        puts ">>> Building snappy for #{a}"
+        cmd(""" \
+            #{cmake} -B#{build_dir} -G Ninja \
+            -DCMAKE_TOOLCHAIN_FILE=#{toolchain} \
+            -DCMAKE_MAKE_PROGRAM=#{ninja} \
+            -DANDROID_ABI=#{a} \
+            -DANDROID_PLATFORM=#{ENV["ANDROID_PLATFORM"]} \
+            -DANDROID_STL=c++_shared \
+            -DCMAKE_INSTALL_PREFIX=#{install_dir} \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_SHARED_LIBS=OFF \
+            -DSNAPPY_BUILD_BENCHMARKS=OFF \
+	        -DSNAPPY_BUILD_TESTS=OFF""")
+        cmd("#{cmake} --build #{build_dir} --target install")
+
+        pkgconfig_path = "#{install_dir}/lib/pkgconfig"
+        FileUtils.rm_r(pkgconfig_path) if Dir.exist?(pkgconfig_path)
+    end
+    Dir.chdir(out)
+end
+
 def build_leveldb ()
     cmake, ninja, abi_list = with_android_env
     toolchain = get_cmake_toolchain
@@ -353,6 +391,7 @@ if __FILE__ == $0
 
     action_hash = {
         "glog" => :build_glog,
+        "snappy" => :build_snappy,
         "leveldb" => :build_leveldb,
         "lua" => :build_lua,
         "marisa-trie" => :build_marisa_trie,
