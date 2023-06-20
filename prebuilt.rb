@@ -164,6 +164,8 @@ def build_leveldb ()
     out = File.realpath(Dir.pwd)
     Dir.chdir(out)
     leveldb_src = get_canonicalized_root_src "leveldb"
+    cmd("""sed -e \'42c find_package(Snappy)\' -i #{leveldb_src}/CMakeLists.txt""")
+    cmd("""sed -e \'s/leveldb snappy/leveldb Snappy::snappy/g\' -i #{leveldb_src}/CMakeLists.txt""")
     for a in abi_list
         Dir.chdir(leveldb_src)
         build_dir = "build_#{a}"
@@ -186,7 +188,9 @@ def build_leveldb ()
             -DCMAKE_BUILD_TYPE=Release \
             -DBUILD_SHARED_LIBS=OFF \
             -DLEVELDB_BUILD_BENCHMARKS=OFF \
-	        -DLEVELDB_BUILD_TESTS=OFF""")
+	        -DLEVELDB_BUILD_TESTS=OFF \
+            -DHAVE_SNAPPY=TRUE \
+            -DSnappy_DIR=\"#{out}/snappy/#{a}/lib/cmake/Snappy\"""")
         cmd("#{cmake} --build #{build_dir} --target install")
     
         pkgconfig_path = "#{install_dir}/lib/pkgconfig"
