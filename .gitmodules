@@ -19,3 +19,6 @@
 [submodule "snappy"]
 	path = snappy
 	url = https://github.com/google/snappy
+[submodule "json"]
+	path = json
+	url = https://github.com/nlohmann/json

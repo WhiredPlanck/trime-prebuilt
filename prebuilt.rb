@@ -390,6 +390,49 @@ def build_boost ()
     Dir.chdir(out)
 end
 
+def build_json ()
+    cmake, ninja, abi_list = with_android_env
+    toolchain = get_cmake_toolchain
+
+    out = File.realpath(Dir.pwd)
+    Dir.chdir(out)
+    json_src = get_canonicalized_root_src "json"
+
+    # since json just have header files that
+    # are the same regardless of abi
+    # we take a random one
+    first_abi = abi_list[0]
+    Dir.chdir(json_src)
+    build_dir = "build_any"
+    install_dir = "#{out}/json/any"
+
+    if Dir.exist?(build_dir)
+        puts ">>> Cleaning previous build intermediates"
+        FileUtils.rm_r(build_dir)
+    end
+
+    puts ">>> Building json"
+    cmd(""" \
+        #{cmake} -B#{build_dir} -G Ninja \
+        -DCMAKE_TOOLCHAIN_FILE=#{toolchain} \
+        -DCMAKE_MAKE_PROGRAM=#{ninja} \
+        -DANDROID_ABI=#{first_abi} \
+        -DANDROID_PLATFORM=#{ENV["ANDROID_PLATFORM"]} \
+        -DANDROID_STL=c++_shared \
+        -DCMAKE_INSTALL_PREFIX=#{install_dir} \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DBUILD_SHARED_LIBS=OFF \
+        -DBUILD_TESTING=OFF \
+        -DJSON_BuildTests=OFF""")
+    cmd("#{cmake} --build #{build_dir} --target install")
+
+    pkgconfig_path = "#{install_dir}/share/pkgconfig"
+    FileUtils.rm_r(pkgconfig_path) if Dir.exist?(pkgconfig_path)
+
+    Dir.chdir(out)
+end
+
+
 if __FILE__ == $0
     $main_path = get_main_path
 
@@ -400,7 +443,8 @@ if __FILE__ == $0
         "lua" => :build_lua,
         "marisa-trie" => :build_marisa_trie,
         "yaml-cpp" => :build_yaml_cpp,
-        "boost" => :build_boost
+        "boost" => :build_boost,
+        "json" => :build_json
     }
 
     OptionParser.new do |parser|
